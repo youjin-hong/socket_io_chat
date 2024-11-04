@@ -1,54 +1,74 @@
 const { Server } = require("socket.io");
 
-const socketHandler = (server) => {
-  const io = new Server(server, {
-    cors: {
-      origin: "http://127.0.0.1:5500", // Adjust this as needed
-      methods: ["GET", "POST"],
-    },
-  });
+class SocketHandler {
+  constructor(server) {
+    this.io = new Server(server, {
+      cors: {
+        origin: "http://127.0.0.1:5500",
+        methods: ["GET", "POST"],
+      },
+    });
 
-  let user = {};
+    this.users = {};
+    this.initialize();
+  }
 
-  io.on("connection", (socket) => {
+  initialize() {
+    this.io.on("connection", (socket) => {
+      this.handleConnection(socket);
+    });
+  }
+
+  handleConnection(socket) {
     const req = socket.request;
-    const socket_id = socket.id;
-    const client_ip =
+    const socketId = socket.id;
+    const clientIp =
       req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+
     console.log("connection!");
-    console.log("socket ID : ", socket_id);
-    console.log("client IP : ", client_ip);
+    console.log("socket ID : ", socketId);
+    console.log("client IP : ", clientIp);
+
+    // 접속 알림 전송
+    this.io.emit("message", `${socketId} 님이 연결되었습니다.`);
 
     // 사용자 추가
-    user[socket.id] = { nickname: "users nickname", point: 0 };
+    this.users[socketId] = { nickname: "users nickname", point: 0 };
 
-    // 연결 해제 시 사용자 삭제
-    socket.on("disconnect", () => {
-      delete user[socket.id];
+    // 메시지 수신 및 브로드캐스트
+    socket.on("message", (msg) => {
+      console.log(`${socketId}: ${msg}`);
+      this.io.emit("message", `${socketId}: ${msg}`);
     });
 
     // 이벤트 핸들링: 특정 이벤트 발생 시 ID 반환
     socket.on("event1", (msg) => {
       console.log(msg);
-      socket.emit("getID", socket.id);
+      socket.emit("getID", socketId);
     });
 
     // 모든 클라이언트에게 메시지 전달
     socket.on("input", (data) => {
-      io.emit("msg", { id: socket.id, message: data });
-      console.log(user);
+      this.io.emit("msg", { id: socketId, message: data });
+      console.log(this.users);
     });
 
     // 본인을 제외한 모든 클라이언트에게 메시지 전달
     socket.on("inputWM", (data) => {
-      socket.broadcast.emit("msg", { id: socket.id, message: data });
+      socket.broadcast.emit("msg", { id: socketId, message: data });
     });
 
     // 특정 클라이언트에게 메시지 전달
     socket.on("private", (id, data) => {
-      io.to(id).emit("msg", { id: socket.id, message: data });
+      this.io.to(id).emit("msg", { id: socketId, message: data });
     });
-  });
-};
 
-module.exports = socketHandler;
+    // 연결 해제 시 사용자 삭제
+    socket.on("disconnect", () => {
+      socket.broadcast.emit("message", `${socketId} 님의 연결이 끊어졌습니다.`);
+      delete this.users[socketId];
+    });
+  }
+}
+
+module.exports = SocketHandler;
