@@ -3,10 +3,10 @@ const { Server } = require("socket.io");
 class SocketHandler {
   constructor(server) {
     this.io = new Server(server, {
-      cors: {
-        origin: "http://127.0.0.1:5500",
-        methods: ["GET", "POST"],
-      },
+      // cors: {  백엔드랑 다른 도메인에서 사용될 경우 쓰면 됨
+      //   origin: "http://127.0.0.1:5500",
+      //   methods: ["GET", "POST"],
+      // },
     });
 
     this.users = {};
