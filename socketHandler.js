@@ -1,25 +1,13 @@
 const { Server } = require("socket.io");
 
-class SocketHandler {
-  constructor(server) {
-    this.io = new Server(server, {
-      // cors: {  백엔드랑 다른 도메인에서 사용될 경우 쓰면 됨
-      //   origin: "http://127.0.0.1:5500",
-      //   methods: ["GET", "POST"],
-      // },
-    });
+const SocketHandler = (server) => {
+  const io = new Server(server);
 
-    this.users = {};
-    this.initialize();
-  }
+  // 사용자 저장소
+  const users = {};
 
-  initialize() {
-    this.io.on("connection", (socket) => {
-      this.handleConnection(socket);
-    });
-  }
-
-  handleConnection(socket) {
+  // 소켓 연결 이벤트 처리
+  io.on("connection", (socket) => {
     const req = socket.request;
     const socketId = socket.id;
     const clientIp =
@@ -30,15 +18,15 @@ class SocketHandler {
     console.log("client IP : ", clientIp);
 
     // 접속 알림 전송
-    this.io.emit("message", `${socketId} 님이 연결되었습니다.`);
+    io.emit("message", `${socketId} 님이 연결되었습니다.`);
 
     // 사용자 추가
-    this.users[socketId] = { nickname: "users nickname", point: 0 };
+    users[socketId] = { nickname: "users nickname", point: 0 };
 
     // 메시지 수신 및 브로드캐스트
     socket.on("message", (msg) => {
       console.log(`${socketId}: ${msg}`);
-      this.io.emit("message", `${socketId}: ${msg}`);
+      io.emit("message", `${socketId}: ${msg}`);
     });
 
     // 이벤트 핸들링: 특정 이벤트 발생 시 ID 반환
@@ -49,8 +37,8 @@ class SocketHandler {
 
     // 모든 클라이언트에게 메시지 전달
     socket.on("input", (data) => {
-      this.io.emit("msg", { id: socketId, message: data });
-      console.log(this.users);
+      io.emit("msg", { id: socketId, message: data });
+      console.log(users);
     });
 
     // 본인을 제외한 모든 클라이언트에게 메시지 전달
@@ -60,15 +48,17 @@ class SocketHandler {
 
     // 특정 클라이언트에게 메시지 전달
     socket.on("private", (id, data) => {
-      this.io.to(id).emit("msg", { id: socketId, message: data });
+      io.to(id).emit("msg", { id: socketId, message: data });
     });
 
     // 연결 해제 시 사용자 삭제
     socket.on("disconnect", () => {
       socket.broadcast.emit("message", `${socketId} 님의 연결이 끊어졌습니다.`);
-      delete this.users[socketId];
+      delete users[socketId];
     });
-  }
-}
+  });
+
+  return io;
+};
 
 module.exports = SocketHandler;

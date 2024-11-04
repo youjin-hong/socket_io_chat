@@ -1,14 +1,12 @@
 const express = require("express");
 const { createServer } = require("http");
-const SocketHandler = require("./socketHandler");
+const socketHandler = require("./socketHandler");
 const path = require("path");
 
 const app = express();
 
 const server = createServer(app);
-const io = new SocketHandler(server);
-
-app.locals.io = io;
+socketHandler(server);
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "./index.html"));
